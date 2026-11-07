@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>CX MEL→Beijing fare watch</title>
+
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.04);
+  --series-1: #2a78d6; --series-2: #eb6834; --critical: #d03b3b; --good: #006300; --link: #1c5cab;
+  --nosale: #f0efec;
+  /* sequential blue: cheaper -> dearer */
+  --s0: #cde2fb; --s1: #9ec5f4; --s2: #6da7ec; --s3: #3987e5; --s4: #256abf; --s5: #184f95; --s6: #0d366b;
+  --i0: #0b0b0b; --i1: #0b0b0b; --i2: #0b0b0b; --i3: #0b0b0b; --i4: #ffffff; --i5: #ffffff; --i6: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --series-1: #3987e5; --series-2: #d95926; --critical: #e66767; --good: #0ca30c; --link: #86b6ef;
+    --nosale: #383835;
+    /* on the dark surface the cheap end recedes toward the surface */
+    --s0: #0d366b; --s1: #184f95; --s2: #256abf; --s3: #3987e5; --s4: #6da7ec; --s5: #9ec5f4; --s6: #cde2fb;
+    --i0: #ffffff; --i1: #ffffff; --i2: #ffffff; --i3: #0b0b0b; --i4: #0b0b0b; --i5: #0b0b0b; --i6: #0b0b0b;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+  --series-1: #3987e5; --series-2: #d95926; --critical: #e66767; --good: #0ca30c; --link: #86b6ef;
+  --nosale: #383835;
+  --s0: #0d366b; --s1: #184f95; --s2: #256abf; --s3: #3987e5; --s4: #6da7ec; --s5: #9ec5f4; --s6: #cde2fb;
+  --i0: #ffffff; --i1: #ffffff; --i2: #ffffff; --i3: #0b0b0b; --i4: #0b0b0b; --i5: #0b0b0b; --i6: #0b0b0b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 24px; line-height: 1.25; margin: 0; }
+h2 { font-size: 17px; margin: 0 0 4px; }
+.sub { color: var(--ink-2); font-size: 14px; }
+.small { font-size: 13px; color: var(--ink-2); }
+a { color: var(--link); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-top: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.tile .label { font-size: 13px; color: var(--ink-2); }
+.tile .value { font-size: 28px; font-weight: 700; line-height: 1.2; margin: 2px 0; }
+@media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } }
+.notes { margin: 8px 0 0; padding-left: 18px; font-size: 14px; color: var(--ink-2); }
+.notes li { margin: 2px 0; }
+
+/* price map */
+.mapscroll { overflow-x: auto; margin-top: 12px; padding-bottom: 4px; }
+.map { display: grid; gap: 2px 1px; width: max-content; }
+.map .colhead, .map .rowhead { font-size: 12px; color: var(--ink-2); display: flex; align-items: flex-end;
+  justify-content: center; text-align: center; line-height: 1.2; padding: 2px; font-variant-numeric: tabular-nums; }
+.map .rowhead { justify-content: flex-end; align-items: center; padding-right: 8px; white-space: nowrap; }
+.map .corner { font-size: 11px; color: var(--muted); display: flex; align-items: flex-end; padding: 2px 8px 2px 0; justify-content: flex-end; }
+.cell { width: 44px; height: 40px; border-radius: 4px; border: 0; padding: 2px; font: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.cell .p { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cell .g { font-size: 10px; min-height: 11px; letter-spacing: 1px; }
+.cell.stale { opacity: 0.55; }
+.cell.nosale { background: var(--nosale); color: var(--ink-2); }
+.cell.unchecked { background: transparent; border: 1px dashed var(--axis); color: var(--muted); cursor: default; }
+.cell:hover, .cell:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 1px; }
+.cell[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 1px; }
+.empty { width: 44px; height: 40px; }
+.gap { width: 6px; height: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.ramp { display: inline-flex; gap: 2px; vertical-align: middle; margin: 0 6px; }
+.ramp span { width: 16px; height: 12px; border-radius: 2px; display: inline-block; }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.chip { display: inline-flex; width: 22px; height: 16px; border-radius: 3px; align-items: center; justify-content: center; font-size: 11px; }
+
+/* detail */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.stat .label { font-size: 12px; color: var(--ink-2); }
+.stat .value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.up { color: var(--critical); }
+.down { color: var(--good); }
+.callout { border-left: 4px solid var(--axis); background: var(--wash); padding: 8px 12px; border-radius: 4px; font-size: 14px; margin: 8px 0; }
+.callout.jump { border-left-color: var(--critical); }
+.legs { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 4px; }
+.legs td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.legs .leghead td { font-weight: 700; padding-top: 12px; border-bottom: 1px solid var(--axis); }
+.legs .lay td { color: var(--ink-2); font-size: 13px; }
+
+/* charts */
+.chart { margin-top: 8px; position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart svg:focus { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.ax text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.gl { stroke: var(--grid); stroke-width: 1; }
+.base { stroke: var(--axis); stroke-width: 1; }
+.cross { stroke: var(--ink-2); stroke-width: 1; }
+.dl { fill: var(--ink-2); font-size: 11px; }
+.serieslegend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+
+/* tooltip */
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  padding: 8px 10px; font-size: 13px; max-width: 260px; display: none; }
+.tip .v { font-size: 15px; font-weight: 700; }
+.tip .row { display: flex; align-items: center; gap: 6px; }
+.tip .k { width: 12px; height: 2px; display: inline-block; }
+.tip .m { color: var(--ink-2); }
+
+/* table */
+.tablescroll { overflow-x: auto; margin-top: 8px; }
+table.all { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+table.all th { text-align: left; font-size: 12px; color: var(--ink-2); border-bottom: 1px solid var(--axis); padding: 0; white-space: nowrap; }
+table.all th button { all: unset; cursor: pointer; padding: 6px 10px 6px 0; display: block; }
+table.all th button:focus-visible { outline: 2px solid var(--ink-2); }
+table.all td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.all td.num, table.all th.num button { text-align: right; }
+table.all tr.sel td { background: var(--wash); }
+table.all tbody tr { cursor: pointer; }
+footer { margin-top: 24px; font-size: 13px; color: var(--ink-2); }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>CX MEL→Beijing fare watch</h1>
+    <div class="sub">Premium Economy · 2 adults + 1 child · return trip · prices in AUD · updated Sat 7 Nov 11:04 AEDT</div>
+  </header>
+
+  <section class="tiles" aria-label="Summary">
+    <div class="tile"><div class="label">Cheapest found</div><div class="value" id="t-best">–</div><div class="small" id="t-best-sub"></div></div>
+    <div class="tile"><div class="label">Date pairs checked</div><div class="value" id="t-pairs">–</div><div class="small" id="t-pairs-sub"></div></div>
+    <div class="tile"><div class="label">Searches used this month</div><div class="value" id="t-used">–</div><div class="small" id="t-used-sub"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>How to read this</h2>
+    <ul class="notes">
+      <li>Every price is the total for the <b>whole return trip</b> (there and back) for 2 adults + 1 child, on Cathay Pacific only.</li>
+      <li>The flights listed are the outbound flights, all in Premium Economy. The flight home is already included in the price: Google pairs each outbound flight with its cheapest flight back.</li>
+      <li>Airlines don't publish how many seats are left. A listed price means at least 3 seats at that price. <b>▲</b> marks a jump of 10% or more since the previous check, which usually means the cheaper seats sold out.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Price map: every date pair checked</h2>
+    <div class="small">Rows are the day you leave (Sun 1 Aug – Fri 20 Aug), columns the day you come back (Sun 15 Aug – Sun 5 Sep). Dashed squares are trips of 14–17 nights that FlightWatch checks automatically but hasn't reached yet. Tap a square for its price history and flights.</div>
+    <div class="mapscroll"><div class="map" id="map" role="grid" aria-label="Prices by outbound and return date"></div></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="card" id="detail" aria-live="polite"></section>
+
+  <section class="card">
+    <h2>Lowest price found each day</h2>
+    <div class="small">The cheapest return-trip price among all date pairs checked that day.</div>
+    <div class="chart" id="daily"></div>
+  </section>
+
+  <section class="card">
+    <h2>All checked date pairs</h2>
+    <div class="small" id="table-note">Tap a column to sort. Tap a row to see it above.</div>
+    <div class="tablescroll"><table class="all" id="table"></table></div>
+  </section>
+
+  <footer>
+    Prices are Google Flights totals and can change at booking: always confirm on Cathay Pacific before paying.
+    Built by FlightWatch, which checks prices every morning (about 07:10 Melbourne time).
+  </footer>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script id="fw-data" type="application/json">{"daily": [{"d": "2026-11-07", "p": 5478}], "meta": {"cabin": "Premium Economy", "currency": "AUD", "gridSize": 79, "nights": [14, 17], "outDates": [{"d": "2027-08-01", "label": "Sun 1 Aug"}, {"d": "2027-08-02", "label": "Mon 2 Aug"}, {"d": "2027-08-03", "label": "Tue 3 Aug"}, {"d": "2027-08-04", "label": "Wed 4 Aug"}, {"d": "2027-08-05", "label": "Thu 5 Aug"}, {"d": "2027-08-06", "label": "Fri 6 Aug"}, {"d": "2027-08-07", "label": "Sat 7 Aug"}, {"d": "2027-08-08", "label": "Sun 8 Aug"}, {"d": "2027-08-09", "label": "Mon 9 Aug"}, {"d": "2027-08-10", "label": "Tue 10 Aug"}, {"d": "2027-08-11", "label": "Wed 11 Aug"}, {"d": "2027-08-12", "label": "Thu 12 Aug"}, {"d": "2027-08-13", "label": "Fri 13 Aug"}, {"d": "2027-08-14", "label": "Sat 14 Aug"}, {"d": "2027-08-15", "label": "Sun 15 Aug"}, {"d": "2027-08-16", "label": "Mon 16 Aug"}, {"d": "2027-08-17", "label": "Tue 17 Aug"}, {"d": "2027-08-18", "label": "Wed 18 Aug"}, {"d": "2027-08-19", "label": "Thu 19 Aug"}, {"d": "2027-08-20", "label": "Fri 20 Aug"}], "outsideCount": 1, "passengerCount": 3, "passengers": "2 adults + 1 child", "quota": 250, "retDates": [{"d": "2027-08-15", "label": "Sun 15 Aug"}, {"d": "2027-08-16", "label": "Mon 16 Aug"}, {"d": "2027-08-17", "label": "Tue 17 Aug"}, {"d": "2027-08-18", "label": "Wed 18 Aug"}, {"d": "2027-08-19", "label": "Thu 19 Aug"}, {"d": "2027-08-20", "label": "Fri 20 Aug"}, {"d": "2027-08-21", "label": "Sat 21 Aug"}, {"d": "2027-08-22", "label": "Sun 22 Aug"}, {"d": "2027-08-23", "label": "Mon 23 Aug"}, {"d": "2027-08-24", "label": "Tue 24 Aug"}, {"d": "2027-08-25", "label": "Wed 25 Aug"}, {"d": "2027-08-26", "label": "Thu 26 Aug"}, {"d": "2027-08-27", "label": "Fri 27 Aug"}, {"d": "2027-08-28", "label": "Sat 28 Aug"}, {"d": "2027-08-29", "label": "Sun 29 Aug"}, {"d": "2027-08-30", "label": "Mon 30 Aug"}, {"d": "2027-08-31", "label": "Tue 31 Aug"}, {"d": "2027-09-01", "label": "Wed 1 Sep"}, {"d": "2027-09-02", "label": "Thu 2 Sep"}, {"d": "2027-09-03", "label": "Fri 3 Sep"}, {"d": "2027-09-04", "label": "Sat 4 Sep"}, {"d": "2027-09-05", "label": "Sun 5 Sep"}], "risePercent": 10.0, "staleDays": 7, "title": "CX MEL\u2192Beijing", "updated": "Sat 7 Nov 11:04 AEDT", "updatedIso": "2026-11-07T00:04:35+00:00", "used": 87}, "pairs": [{"checked": "2026-11-06T15:20:04+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 2 Aug 06:55", "dep": "Sun 1 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 2 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAxKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE1KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:20:04+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 14, "onSale": true, "out": "2027-08-01", "outLabel": "Sun 1 Aug", "prev": null, "price": 6975, "ret": "2027-08-15", "retLabel": "Sun 15 Aug", "stale": false}, {"checked": "2026-11-06T15:20:17+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 2 Aug 06:55", "dep": "Sun 1 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 2 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAxKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE2KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:20:17+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 15, "onSale": true, "out": "2027-08-01", "outLabel": "Sun 1 Aug", "prev": null, "price": 6975, "ret": "2027-08-16", "retLabel": "Mon 16 Aug", "stale": false}, {"checked": "2026-11-06T15:20:25+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 2 Aug 06:55", "dep": "Sun 1 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 2 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAxKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE3KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:20:25+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 16, "onSale": true, "out": "2027-08-01", "outLabel": "Sun 1 Aug", "prev": null, "price": 6975, "ret": "2027-08-17", "retLabel": "Tue 17 Aug", "stale": false}, {"checked": "2026-11-06T15:20:43+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 2 Aug 06:55", "dep": "Sun 1 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 2 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAxKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:20:43+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 17, "onSale": true, "out": "2027-08-01", "outLabel": "Sun 1 Aug", "prev": null, "price": 6975, "ret": "2027-08-18", "retLabel": "Wed 18 Aug", "stale": false}, {"checked": "2026-11-06T15:20:56+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 3 Aug 06:55", "dep": "Mon 2 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 3 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE2KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:20:56+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-02", "outLabel": "Mon 2 Aug", "prev": null, "price": 5478, "ret": "2027-08-16", "retLabel": "Mon 16 Aug", "stale": false}, {"checked": "2026-11-06T15:21:07+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 3 Aug 06:55", "dep": "Mon 2 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 3 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE3KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:21:07+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-02", "outLabel": "Mon 2 Aug", "prev": null, "price": 5478, "ret": "2027-08-17", "retLabel": "Tue 17 Aug", "stale": false}, {"checked": "2026-11-06T15:21:14+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 3 Aug 06:55", "dep": "Mon 2 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 3 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:21:14+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-02", "outLabel": "Mon 2 Aug", "prev": null, "price": 5478, "ret": "2027-08-18", "retLabel": "Wed 18 Aug", "stale": false}, {"checked": "2026-11-06T15:21:27+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 3 Aug 06:55", "dep": "Mon 2 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 3 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:21:27+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-02", "outLabel": "Mon 2 Aug", "prev": null, "price": 5478, "ret": "2027-08-19", "retLabel": "Thu 19 Aug", "stale": false}, {"checked": "2026-11-06T15:21:33+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 4 Aug 06:55", "dep": "Tue 3 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 4 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE3KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:21:33+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-03", "outLabel": "Tue 3 Aug", "prev": null, "price": 5478, "ret": "2027-08-17", "retLabel": "Tue 17 Aug", "stale": false}, {"checked": "2026-11-06T15:21:45+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 4 Aug 06:55", "dep": "Tue 3 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 4 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:21:45+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-03", "outLabel": "Tue 3 Aug", "prev": null, "price": 5478, "ret": "2027-08-18", "retLabel": "Wed 18 Aug", "stale": false}, {"checked": "2026-11-06T15:21:52+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 4 Aug 06:55", "dep": "Tue 3 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 4 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:21:52+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-03", "outLabel": "Tue 3 Aug", "prev": null, "price": 5478, "ret": "2027-08-19", "retLabel": "Thu 19 Aug", "stale": false}, {"checked": "2026-11-06T15:22:04+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 4 Aug 06:55", "dep": "Tue 3 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 4 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTAzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIwKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:22:04+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-03", "outLabel": "Tue 3 Aug", "prev": null, "price": 5478, "ret": "2027-08-20", "retLabel": "Fri 20 Aug", "stale": false}, {"checked": "2026-11-06T15:22:12+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 5 Aug 06:55", "dep": "Wed 4 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 5 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:22:12+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-04", "outLabel": "Wed 4 Aug", "prev": null, "price": 5478, "ret": "2027-08-18", "retLabel": "Wed 18 Aug", "stale": false}, {"checked": "2026-11-06T15:22:32+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 5 Aug 06:55", "dep": "Wed 4 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 5 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:22:32+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-04", "outLabel": "Wed 4 Aug", "prev": null, "price": 5478, "ret": "2027-08-19", "retLabel": "Thu 19 Aug", "stale": false}, {"checked": "2026-11-06T15:22:37+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 5 Aug 06:55", "dep": "Wed 4 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 5 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIwKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:22:37+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-04", "outLabel": "Wed 4 Aug", "prev": null, "price": 5478, "ret": "2027-08-20", "retLabel": "Fri 20 Aug", "stale": false}, {"checked": "2026-11-06T15:22:43+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 5 Aug 06:55", "dep": "Wed 4 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 5 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:22:43+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-04", "outLabel": "Wed 4 Aug", "prev": null, "price": 5478, "ret": "2027-08-21", "retLabel": "Sat 21 Aug", "stale": false}, {"checked": "2026-11-06T15:23:01+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 6 Aug 06:55", "dep": "Thu 5 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 6 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:23:01+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-05", "outLabel": "Thu 5 Aug", "prev": null, "price": 5478, "ret": "2027-08-19", "retLabel": "Thu 19 Aug", "stale": false}, {"checked": "2026-11-06T14:51:30+00:00", "checkedAgo": "today", "checks": 2, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 6 Aug 06:55", "dep": "Thu 5 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 6 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIwKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T14:02:28+00:00"}, {"p": 5478, "t": "2026-11-06T14:51:30+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-05", "outLabel": "Thu 5 Aug", "prev": 5478, "price": 5478, "ret": "2027-08-20", "retLabel": "Fri 20 Aug", "stale": false}, {"checked": "2026-11-06T15:23:21+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 6 Aug 06:55", "dep": "Thu 5 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 6 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:23:21+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-05", "outLabel": "Thu 5 Aug", "prev": null, "price": 5478, "ret": "2027-08-21", "retLabel": "Sat 21 Aug", "stale": false}, {"checked": "2026-11-06T15:23:33+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 6 Aug 06:55", "dep": "Thu 5 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 6 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIyKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:23:33+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-05", "outLabel": "Thu 5 Aug", "prev": null, "price": 5478, "ret": "2027-08-22", "retLabel": "Sun 22 Aug", "stale": false}, {"checked": "2026-11-06T15:23:45+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 14, "onSale": false, "out": "2027-08-06", "outLabel": "Fri 6 Aug", "prev": null, "price": null, "ret": "2027-08-20", "retLabel": "Fri 20 Aug", "stale": false}, {"checked": "2026-11-06T15:07:11+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 15, "onSale": false, "out": "2027-08-06", "outLabel": "Fri 6 Aug", "prev": null, "price": null, "ret": "2027-08-21", "retLabel": "Sat 21 Aug", "stale": false}, {"checked": "2026-11-06T15:23:57+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 16, "onSale": false, "out": "2027-08-06", "outLabel": "Fri 6 Aug", "prev": null, "price": null, "ret": "2027-08-22", "retLabel": "Sun 22 Aug", "stale": false}, {"checked": "2026-11-06T15:24:05+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 17, "onSale": false, "out": "2027-08-06", "outLabel": "Fri 6 Aug", "prev": null, "price": null, "ret": "2027-08-23", "retLabel": "Mon 23 Aug", "stale": false}, {"checked": "2026-11-06T15:24:17+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 8 Aug 06:55", "dep": "Sat 7 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 8 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:24:17+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 14, "onSale": true, "out": "2027-08-07", "outLabel": "Sat 7 Aug", "prev": null, "price": 5613, "ret": "2027-08-21", "retLabel": "Sat 21 Aug", "stale": false}, {"checked": "2026-11-06T15:24:30+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 8 Aug 06:55", "dep": "Sat 7 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 8 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIyKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:24:30+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 15, "onSale": true, "out": "2027-08-07", "outLabel": "Sat 7 Aug", "prev": null, "price": 5613, "ret": "2027-08-22", "retLabel": "Sun 22 Aug", "stale": false}, {"checked": "2026-11-06T15:24:42+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 8 Aug 06:55", "dep": "Sat 7 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 8 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIzKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:24:42+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 16, "onSale": true, "out": "2027-08-07", "outLabel": "Sat 7 Aug", "prev": null, "price": 5613, "ret": "2027-08-23", "retLabel": "Mon 23 Aug", "stale": false}, {"checked": "2026-11-06T15:24:53+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 8 Aug 06:55", "dep": "Sat 7 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 8 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI0KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:24:53+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 17, "onSale": true, "out": "2027-08-07", "outLabel": "Sat 7 Aug", "prev": null, "price": 5613, "ret": "2027-08-24", "retLabel": "Tue 24 Aug", "stale": false}, {"checked": "2026-11-06T15:25:11+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 9 Aug 06:55", "dep": "Sun 8 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 9 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIyKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:25:11+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 14, "onSale": true, "out": "2027-08-08", "outLabel": "Sun 8 Aug", "prev": null, "price": 6975, "ret": "2027-08-22", "retLabel": "Sun 22 Aug", "stale": false}, {"checked": "2026-11-06T15:25:18+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 9 Aug 06:55", "dep": "Sun 8 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 9 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIzKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:25:18+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 15, "onSale": true, "out": "2027-08-08", "outLabel": "Sun 8 Aug", "prev": null, "price": 6975, "ret": "2027-08-23", "retLabel": "Mon 23 Aug", "stale": false}, {"checked": "2026-11-06T15:25:32+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 9 Aug 06:55", "dep": "Sun 8 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 9 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI0KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:25:32+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 16, "onSale": true, "out": "2027-08-08", "outLabel": "Sun 8 Aug", "prev": null, "price": 6975, "ret": "2027-08-24", "retLabel": "Tue 24 Aug", "stale": false}, {"checked": "2026-11-06T15:25:39+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 9 Aug 06:55", "dep": "Sun 8 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 9 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI1KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:25:39+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 17, "onSale": true, "out": "2027-08-08", "outLabel": "Sun 8 Aug", "prev": null, "price": 6975, "ret": "2027-08-25", "retLabel": "Wed 25 Aug", "stale": false}, {"checked": "2026-11-06T15:25:47+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 10 Aug 06:55", "dep": "Mon 9 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 10 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTIzKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:25:47+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-09", "outLabel": "Mon 9 Aug", "prev": null, "price": 5478, "ret": "2027-08-23", "retLabel": "Mon 23 Aug", "stale": false}, {"checked": "2026-11-06T15:25:52+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 10 Aug 06:55", "dep": "Mon 9 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 10 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI0KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:25:52+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-09", "outLabel": "Mon 9 Aug", "prev": null, "price": 5478, "ret": "2027-08-24", "retLabel": "Tue 24 Aug", "stale": false}, {"checked": "2026-11-06T15:26:18+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 10 Aug 06:55", "dep": "Mon 9 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 10 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI1KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:26:18+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-09", "outLabel": "Mon 9 Aug", "prev": null, "price": 5478, "ret": "2027-08-25", "retLabel": "Wed 25 Aug", "stale": false}, {"checked": "2026-11-06T15:26:26+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Tue 10 Aug 06:55", "dep": "Mon 9 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Tue 10 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTA5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI2KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:26:26+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-09", "outLabel": "Mon 9 Aug", "prev": null, "price": 5478, "ret": "2027-08-26", "retLabel": "Thu 26 Aug", "stale": false}, {"checked": "2026-11-06T15:26:33+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 11 Aug 06:55", "dep": "Tue 10 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 11 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEwKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI0KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:26:33+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-10", "outLabel": "Tue 10 Aug", "prev": null, "price": 5478, "ret": "2027-08-24", "retLabel": "Tue 24 Aug", "stale": false}, {"checked": "2026-11-06T15:26:46+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 11 Aug 06:55", "dep": "Tue 10 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 11 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEwKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI1KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:26:46+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-10", "outLabel": "Tue 10 Aug", "prev": null, "price": 5478, "ret": "2027-08-25", "retLabel": "Wed 25 Aug", "stale": false}, {"checked": "2026-11-06T15:26:53+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 11 Aug 06:55", "dep": "Tue 10 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 11 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEwKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI2KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:26:53+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-10", "outLabel": "Tue 10 Aug", "prev": null, "price": 5478, "ret": "2027-08-26", "retLabel": "Thu 26 Aug", "stale": false}, {"checked": "2026-11-06T15:27:00+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 11 Aug 06:55", "dep": "Tue 10 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 11 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEwKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI3KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:27:00+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-10", "outLabel": "Tue 10 Aug", "prev": null, "price": 5478, "ret": "2027-08-27", "retLabel": "Fri 27 Aug", "stale": false}, {"checked": "2026-11-06T15:27:15+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 12 Aug 06:55", "dep": "Wed 11 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 12 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTExKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI1KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:27:15+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-11", "outLabel": "Wed 11 Aug", "prev": null, "price": 5478, "ret": "2027-08-25", "retLabel": "Wed 25 Aug", "stale": false}, {"checked": "2026-11-06T15:27:28+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 12 Aug 06:55", "dep": "Wed 11 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 12 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTExKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI2KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:27:28+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-11", "outLabel": "Wed 11 Aug", "prev": null, "price": 5478, "ret": "2027-08-26", "retLabel": "Thu 26 Aug", "stale": false}, {"checked": "2026-11-06T15:27:36+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 12 Aug 06:55", "dep": "Wed 11 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 12 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTExKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI3KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:27:36+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-11", "outLabel": "Wed 11 Aug", "prev": null, "price": 5478, "ret": "2027-08-27", "retLabel": "Fri 27 Aug", "stale": false}, {"checked": "2026-11-06T15:27:45+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 12 Aug 06:55", "dep": "Wed 11 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 12 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTExKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:27:45+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-11", "outLabel": "Wed 11 Aug", "prev": null, "price": 5478, "ret": "2027-08-28", "retLabel": "Sat 28 Aug", "stale": false}, {"checked": "2026-11-06T15:27:57+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 13 Aug 06:55", "dep": "Thu 12 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 13 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI2KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:27:57+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-12", "outLabel": "Thu 12 Aug", "prev": null, "price": 5478, "ret": "2027-08-26", "retLabel": "Thu 26 Aug", "stale": false}, {"checked": "2026-11-06T15:28:03+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 13 Aug 06:55", "dep": "Thu 12 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 13 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI3KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:28:03+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-12", "outLabel": "Thu 12 Aug", "prev": null, "price": 5478, "ret": "2027-08-27", "retLabel": "Fri 27 Aug", "stale": false}, {"checked": "2026-11-06T15:28:10+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 13 Aug 06:55", "dep": "Thu 12 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 13 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:28:10+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-12", "outLabel": "Thu 12 Aug", "prev": null, "price": 5478, "ret": "2027-08-28", "retLabel": "Sat 28 Aug", "stale": false}, {"checked": "2026-11-06T15:28:18+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 13 Aug 06:55", "dep": "Thu 12 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 13 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEyKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:28:18+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-12", "outLabel": "Thu 12 Aug", "prev": null, "price": 5478, "ret": "2027-08-29", "retLabel": "Sun 29 Aug", "stale": false}, {"checked": "2026-11-06T15:28:23+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sat 14 Aug 06:55", "dep": "Fri 13 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sat 14 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI3KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:28:23+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 14, "onSale": true, "out": "2027-08-13", "outLabel": "Fri 13 Aug", "prev": null, "price": 5613, "ret": "2027-08-27", "retLabel": "Fri 27 Aug", "stale": false}, {"checked": "2026-11-06T15:28:31+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sat 14 Aug 06:55", "dep": "Fri 13 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sat 14 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:28:31+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 15, "onSale": true, "out": "2027-08-13", "outLabel": "Fri 13 Aug", "prev": null, "price": 5613, "ret": "2027-08-28", "retLabel": "Sat 28 Aug", "stale": false}, {"checked": "2026-11-06T15:28:38+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sat 14 Aug 06:55", "dep": "Fri 13 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sat 14 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:28:38+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 16, "onSale": true, "out": "2027-08-13", "outLabel": "Fri 13 Aug", "prev": null, "price": 5613, "ret": "2027-08-29", "retLabel": "Sun 29 Aug", "stale": false}, {"checked": "2026-11-06T15:28:52+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sat 14 Aug 06:55", "dep": "Fri 13 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sat 14 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTEzKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTMwKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:28:52+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 17, "onSale": true, "out": "2027-08-13", "outLabel": "Fri 13 Aug", "prev": null, "price": 5613, "ret": "2027-08-30", "retLabel": "Mon 30 Aug", "stale": false}, {"checked": "2026-11-06T15:29:02+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 15 Aug 06:55", "dep": "Sat 14 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 15 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI4KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:29:02+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 14, "onSale": true, "out": "2027-08-14", "outLabel": "Sat 14 Aug", "prev": null, "price": 5613, "ret": "2027-08-28", "retLabel": "Sat 28 Aug", "stale": false}, {"checked": "2026-11-06T15:29:10+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 15 Aug 06:55", "dep": "Sat 14 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 15 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:29:10+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 15, "onSale": true, "out": "2027-08-14", "outLabel": "Sat 14 Aug", "prev": null, "price": 5613, "ret": "2027-08-29", "retLabel": "Sun 29 Aug", "stale": false}, {"checked": "2026-11-06T15:29:19+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 15 Aug 06:55", "dep": "Sat 14 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 15 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTMwKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:29:19+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 16, "onSale": true, "out": "2027-08-14", "outLabel": "Sat 14 Aug", "prev": null, "price": 5613, "ret": "2027-08-30", "retLabel": "Mon 30 Aug", "stale": false}, {"checked": "2026-11-06T15:29:31+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sun 15 Aug 06:55", "dep": "Sat 14 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sun 15 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE0KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTMxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:29:31+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 17, "onSale": true, "out": "2027-08-14", "outLabel": "Sat 14 Aug", "prev": null, "price": 5613, "ret": "2027-08-31", "retLabel": "Tue 31 Aug", "stale": false}, {"checked": "2026-11-06T15:29:39+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 16 Aug 06:55", "dep": "Sun 15 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 16 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTI5KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:29:39+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 14, "onSale": true, "out": "2027-08-15", "outLabel": "Sun 15 Aug", "prev": null, "price": 6975, "ret": "2027-08-29", "retLabel": "Sun 29 Aug", "stale": false}, {"checked": "2026-11-06T15:29:46+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 16 Aug 06:55", "dep": "Sun 15 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 16 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTMwKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:29:46+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 15, "onSale": true, "out": "2027-08-15", "outLabel": "Sun 15 Aug", "prev": null, "price": 6975, "ret": "2027-08-30", "retLabel": "Mon 30 Aug", "stale": false}, {"checked": "2026-11-06T13:59:21+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 16 Aug 06:55", "dep": "Sun 15 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 16 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTMxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T13:59:21+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 16, "onSale": true, "out": "2027-08-15", "outLabel": "Sun 15 Aug", "prev": null, "price": 6975, "ret": "2027-08-31", "retLabel": "Tue 31 Aug", "stale": false}, {"checked": "2026-11-06T15:30:00+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Mon 16 Aug 06:55", "dep": "Sun 15 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Mon 16 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE1KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 6975, "t": "2026-11-06T15:30:00+00:00"}], "inGrid": true, "jump": null, "low": 6975, "nights": 17, "onSale": true, "out": "2027-08-15", "outLabel": "Sun 15 Aug", "prev": null, "price": 6975, "ret": "2027-09-01", "retLabel": "Wed 1 Sep", "stale": false}, {"checked": "2026-11-06T15:30:10+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 14, "onSale": false, "out": "2027-08-16", "outLabel": "Mon 16 Aug", "prev": null, "price": null, "ret": "2027-08-30", "retLabel": "Mon 30 Aug", "stale": false}, {"checked": "2026-11-06T15:30:29+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 15, "onSale": false, "out": "2027-08-16", "outLabel": "Mon 16 Aug", "prev": null, "price": null, "ret": "2027-08-31", "retLabel": "Tue 31 Aug", "stale": false}, {"checked": "2026-11-06T15:30:37+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 16, "onSale": false, "out": "2027-08-16", "outLabel": "Mon 16 Aug", "prev": null, "price": null, "ret": "2027-09-01", "retLabel": "Wed 1 Sep", "stale": false}, {"checked": "2026-11-06T15:30:43+00:00", "checkedAgo": "today", "checks": 1, "flights": null, "gf": null, "history": [], "inGrid": true, "jump": null, "low": null, "nights": 17, "onSale": false, "out": "2027-08-16", "outLabel": "Mon 16 Aug", "prev": null, "price": null, "ret": "2027-09-02", "retLabel": "Thu 2 Sep", "stale": false}, {"checked": "2026-11-06T15:30:53+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 18 Aug 06:55", "dep": "Tue 17 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 18 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA4LTMxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:30:53+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-17", "outLabel": "Tue 17 Aug", "prev": null, "price": 5478, "ret": "2027-08-31", "retLabel": "Tue 31 Aug", "stale": false}, {"checked": "2026-11-06T15:30:57+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 18 Aug 06:55", "dep": "Tue 17 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 18 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:30:57+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-17", "outLabel": "Tue 17 Aug", "prev": null, "price": 5478, "ret": "2027-09-01", "retLabel": "Wed 1 Sep", "stale": false}, {"checked": "2026-11-06T15:31:09+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 18 Aug 06:55", "dep": "Tue 17 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 18 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAyKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:31:09+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-17", "outLabel": "Tue 17 Aug", "prev": null, "price": 5478, "ret": "2027-09-02", "retLabel": "Thu 2 Sep", "stale": false}, {"checked": "2026-11-06T15:31:21+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Wed 18 Aug 06:55", "dep": "Tue 17 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Wed 18 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE3KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAzKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:31:21+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-17", "outLabel": "Tue 17 Aug", "prev": null, "price": 5478, "ret": "2027-09-03", "retLabel": "Fri 3 Sep", "stale": false}, {"checked": "2026-11-06T15:31:34+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 19 Aug 06:55", "dep": "Wed 18 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 19 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAxKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:31:34+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-18", "outLabel": "Wed 18 Aug", "prev": null, "price": 5478, "ret": "2027-09-01", "retLabel": "Wed 1 Sep", "stale": false}, {"checked": "2026-11-06T15:31:50+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 19 Aug 06:55", "dep": "Wed 18 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 19 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAyKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:31:50+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-18", "outLabel": "Wed 18 Aug", "prev": null, "price": 5478, "ret": "2027-09-02", "retLabel": "Thu 2 Sep", "stale": false}, {"checked": "2026-11-06T15:31:58+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 19 Aug 06:55", "dep": "Wed 18 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 19 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAzKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:31:58+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-18", "outLabel": "Wed 18 Aug", "prev": null, "price": 5478, "ret": "2027-09-03", "retLabel": "Fri 3 Sep", "stale": false}, {"checked": "2026-11-06T15:32:03+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Thu 19 Aug 06:55", "dep": "Wed 18 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Thu 19 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE4KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTA0KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:32:03+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-18", "outLabel": "Wed 18 Aug", "prev": null, "price": 5478, "ret": "2027-09-04", "retLabel": "Sat 4 Sep", "stale": false}, {"checked": "2026-11-06T15:32:12+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 20 Aug 06:55", "dep": "Thu 19 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 20 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAyKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:32:12+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 14, "onSale": true, "out": "2027-08-19", "outLabel": "Thu 19 Aug", "prev": null, "price": 5478, "ret": "2027-09-02", "retLabel": "Thu 2 Sep", "stale": false}, {"checked": "2026-11-06T15:32:17+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 20 Aug 06:55", "dep": "Thu 19 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 20 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAzKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:32:17+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 15, "onSale": true, "out": "2027-08-19", "outLabel": "Thu 19 Aug", "prev": null, "price": 5478, "ret": "2027-09-03", "retLabel": "Fri 3 Sep", "stale": false}, {"checked": "2026-11-06T15:32:26+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 20 Aug 06:55", "dep": "Thu 19 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 20 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTA0KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:32:26+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 16, "onSale": true, "out": "2027-08-19", "outLabel": "Thu 19 Aug", "prev": null, "price": 5478, "ret": "2027-09-04", "retLabel": "Sat 4 Sep", "stale": false}, {"checked": "2026-11-06T15:32:34+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Fri 20 Aug 06:55", "dep": "Thu 19 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Fri 20 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTE5KAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTA1KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5478, "t": "2026-11-06T15:32:34+00:00"}], "inGrid": true, "jump": null, "low": 5478, "nights": 17, "onSale": true, "out": "2027-08-19", "outLabel": "Thu 19 Aug", "prev": null, "price": 5478, "ret": "2027-09-05", "retLabel": "Sun 5 Sep", "stale": false}, {"checked": "2026-11-06T15:32:40+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sat 21 Aug 06:55", "dep": "Fri 20 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sat 21 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTIwKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTAzKAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:32:40+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 14, "onSale": true, "out": "2027-08-20", "outLabel": "Fri 20 Aug", "prev": null, "price": 5613, "ret": "2027-09-03", "retLabel": "Fri 3 Sep", "stale": false}, {"checked": "2026-11-06T15:32:44+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sat 21 Aug 06:55", "dep": "Fri 20 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sat 21 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTIwKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTA0KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:32:44+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 15, "onSale": true, "out": "2027-08-20", "outLabel": "Fri 20 Aug", "prev": null, "price": 5613, "ret": "2027-09-04", "retLabel": "Sat 4 Sep", "stale": false}, {"checked": "2026-11-06T15:32:53+00:00", "checkedAgo": "today", "checks": 1, "flights": {"layovers": ["2h 05m in Hong Kong International Airport"], "segments": [{"airplane": "Airbus A350", "arr": "Sat 21 Aug 06:55", "dep": "Fri 20 Aug 23:45", "duration": "9h 10m", "flight_number": "CX 178", "route": "MEL \u2192 HKG"}, {"airplane": "Airbus A350", "arr": "12:25", "dep": "Sat 21 Aug 09:00", "duration": "3h 25m", "flight_number": "CX 390", "route": "HKG \u2192 PEK"}], "total": "14h 40m"}, "gf": "https://www.google.com/travel/flights?hl=en\u0026gl=au\u0026curr=AUD\u0026tfs=CBwQAho0EgoyMDI3LTA4LTIwKAEyAkNYagcIARIDTUVMcgcIARIDUEVLcgcIARIDUEtYiAFakAHKAho0EgoyMDI3LTA5LTA1KAEyAkNYagcIARIDUEVLagcIARIDUEtYcgcIARIDTUVMiAFakAHKAkABQAFAAkgCcAGYAQE\u0026tfu=EgIIAg", "history": [{"p": 5613, "t": "2026-11-06T15:32:53+00:00"}], "inGrid": true, "jump": null, "low": 5613, "nights": 16, "onSale": true, "out": "2027-08-20", "outLabel": "Fri 20 Aug", "prev": null, "price": 5613, "ret": "2027-09-05", "retLabel": "Sun 5 Sep", "stale": false}]}</script>
+
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("fw-data").textContent);
+  var M = D.meta;
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  function money(v) { return v == null ? "–" : "A$" + Math.round(v).toLocaleString("en-AU"); }
+  function num(v) { return Math.round(v).toLocaleString("en-AU"); }
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function sv(tag, attrs, text) {
+    var e = document.createElementNS(SVGNS, tag);
+    if (attrs) for (var k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function pairLabel(p) { return p.outLabel + " → " + p.retLabel + " · " + p.nights + " nights"; }
+
+  var pairs = D.pairs;
+  var checked = pairs.filter(function (p) { return p.onSale !== null && p.onSale !== undefined; });
+  var priced = checked.filter(function (p) { return p.price != null; });
+  var cheapest = priced.slice().sort(function (a, b) { return a.price - b.price; })[0] || null;
+  var lo = priced.length ? Math.min.apply(null, priced.map(function (p) { return p.price; })) : 0;
+  var hi = priced.length ? Math.max.apply(null, priced.map(function (p) { return p.price; })) : 0;
+  function bin(v) { return hi === lo ? 3 : Math.max(0, Math.min(6, Math.floor((v - lo) / (hi - lo) * 7))); }
+  function key(p) { return p.out + "|" + p.ret; }
+  var selected = cheapest || checked[0] || null;
+
+  /* ---------- tooltip ---------- */
+  var tip = document.getElementById("tip");
+  function showTip(lines, x, y) {
+    tip.textContent = "";
+    lines.forEach(function (l) {
+      var row = el("div", { "class": "row" + (l.cls ? " " + l.cls : "") });
+      if (l.key) row.appendChild(el("span", { "class": "k", style: "background:" + l.key }));
+      row.appendChild(document.createTextNode(l.text));
+      tip.appendChild(row);
+    });
+    tip.style.display = "block";
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    var left = Math.min(window.innerWidth - w - 8, Math.max(8, x + 14));
+    var top = y + 14 + h > window.innerHeight ? y - h - 10 : y + 14;
+    tip.style.left = left + "px"; tip.style.top = Math.max(8, top) + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+
+  /* ---------- tiles ---------- */
+  if (cheapest) {
+    document.getElementById("t-best").textContent = money(cheapest.price);
+    document.getElementById("t-best-sub").textContent = pairLabel(cheapest) + " · return trip";
+  } else {
+    document.getElementById("t-best").textContent = "No prices yet";
+  }
+  var inGrid = checked.filter(function (p) { return p.inGrid; }).length;
+  var extra = checked.length - inGrid;
+  document.getElementById("t-pairs").textContent = checked.length;
+  document.getElementById("t-pairs-sub").textContent = inGrid + " of " + M.gridSize + " in the daily grid" +
+    (extra ? " · " + extra + " more from manual searches" : "");
+  document.getElementById("t-used").textContent = M.used + " / " + M.quota;
+  document.getElementById("t-used-sub").textContent = "Updated " + M.updated;
+
+  /* ---------- price map ---------- */
+  var byKey = {};
+  pairs.forEach(function (p) { byKey[key(p)] = p; });
+  var outs = M.outDates.map(function (x) { return x.d; });
+  var rets = M.retDates.map(function (x) { return x.d; });
+  var labelOf = {};
+  M.outDates.concat(M.retDates).forEach(function (x) { labelOf[x.d] = x.label; });
+  var cells = {};
+
+  function cellTip(p) {
+    var lines = [];
+    if (p.onSale === null || p.onSale === undefined) {
+      lines.push({ text: "Not checked yet", cls: "v" });
+    } else if (!p.onSale) {
+      lines.push({ text: "Not on sale yet", cls: "v" });
+    } else {
+      lines.push({ text: money(p.price) + " return trip", cls: "v" });
+      if (p.jump) lines.push({ text: "▲ up " + money(p.jump[0]) + " (" + p.jump[1] + "%) since the previous check" });
+    }
+    lines.push({ text: pairLabel(p), cls: "m" });
+    if (p.checkedAgo) lines.push({ text: "Checked " + p.checkedAgo + (p.checks > 1 ? " · " + p.checks + " checks" : ""), cls: "m" });
+    if (!p.inGrid) lines.push({ text: "From a manual search (not in the daily grid)", cls: "m" });
+    return lines;
+  }
+
+  function buildMap() {
+    var map = document.getElementById("map");
+    map.style.gridTemplateColumns = "auto " + rets.map(function (r) { return r ? "44px" : "6px"; }).join(" ");
+    map.appendChild(el("div", { "class": "corner" }, "leave ↓ / back →"));
+    rets.forEach(function (r) {
+      if (!r) { map.appendChild(el("div", { "class": "gap" })); return; }
+      var h = el("div", { "class": "colhead", role: "columnheader" });
+      var parts = labelOf[r].split(" ");
+      h.appendChild(document.createTextNode(parts[0])); h.appendChild(el("br"));
+      h.appendChild(document.createTextNode(parts.slice(1).join(" ")));
+      map.appendChild(h);
+    });
+    outs.forEach(function (o) {
+      if (!o) { rets.forEach(function () { map.appendChild(el("div", { "class": "gap" })); }); map.appendChild(el("div", { "class": "gap" })); return; }
+      map.appendChild(el("div", { "class": "rowhead", role: "rowheader" }, labelOf[o]));
+      rets.forEach(function (r) {
+        if (!r) { map.appendChild(el("div", { "class": "gap" })); return; }
+        var p = byKey[o + "|" + r];
+        if (!p) { map.appendChild(el("div", { "class": "empty" })); return; }
+        var c;
+        if (p.onSale === null || p.onSale === undefined) {
+          c = el("div", { "class": "cell unchecked", role: "gridcell", "aria-label": pairLabel(p) + ": not checked yet" });
+          c.appendChild(el("span", { "class": "p" }, "?"));
+        } else {
+          c = el("button", { type: "button", "class": "cell" + (p.onSale ? "" : " nosale") + (p.stale ? " stale" : ""),
+            role: "gridcell", "aria-pressed": "false" });
+          var glyphs = "";
+          if (p.onSale) {
+            var b = bin(p.price);
+            c.style.background = "var(--s" + b + ")"; c.style.color = "var(--i" + b + ")";
+            c.appendChild(el("span", { "class": "p" }, num(p.price)));
+            if (cheapest && p === cheapest) glyphs += "★";
+            if (p.jump) glyphs += "▲";
+          } else {
+            c.appendChild(el("span", { "class": "p" }, "–"));
+          }
+          c.appendChild(el("span", { "class": "g" }, glyphs));
+          c.setAttribute("aria-label", cellTip(p).map(function (l) { return l.text; }).join(". "));
+          c.addEventListener("click", function () { select(p); });
+          cells[key(p)] = c;
+        }
+        c.addEventListener("pointermove", function (e) { showTip(cellTip(p), e.clientX, e.clientY); });
+        c.addEventListener("pointerleave", hideTip);
+        c.addEventListener("focus", function () { var r2 = c.getBoundingClientRect(); showTip(cellTip(p), r2.right, r2.top); });
+        c.addEventListener("blur", hideTip);
+        map.appendChild(c);
+      });
+    });
+
+    var lg = document.getElementById("legend");
+    if (priced.length) {
+      var k = el("span", { "class": "key" });
+      k.appendChild(document.createTextNode("cheaper " + money(lo)));
+      var ramp = el("span", { "class": "ramp", "aria-hidden": "true" });
+      for (var i = 0; i < 7; i++) ramp.appendChild(el("span", { style: "background:var(--s" + i + ")" }));
+      k.appendChild(ramp);
+      k.appendChild(document.createTextNode(money(hi) + " dearer"));
+      lg.appendChild(k);
+    }
+    [["★", "cheapest"], ["▲", "jumped at last check"]].forEach(function (g) {
+      var k2 = el("span", { "class": "key" }); k2.appendChild(el("b", null, g[0])); k2.appendChild(document.createTextNode(g[1])); lg.appendChild(k2);
+    });
+    var ns = el("span", { "class": "key" }); ns.appendChild(el("span", { "class": "chip", style: "background:var(--nosale)" }, "–"));
+    ns.appendChild(document.createTextNode("not on sale yet")); lg.appendChild(ns);
+    var nc = el("span", { "class": "key" }); nc.appendChild(el("span", { "class": "chip", style: "border:1px dashed var(--axis)" }, "?"));
+    nc.appendChild(document.createTextNode("not checked yet")); lg.appendChild(nc);
+    lg.appendChild(el("span", { "class": "key" }, "faded = checked over " + M.staleDays + " days ago"));
+  }
+
+  /* ---------- line chart ---------- */
+  function niceTicks(a, b, n) {
+    if (a === b) { var pad = Math.max(100, Math.abs(a) * 0.05); a -= pad; b += pad; }
+    var raw = (b - a) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = mag;
+    [1, 2, 2.5, 5, 10].some(function (m) { step = m * mag; return step >= raw; });
+    var t = [], v = Math.floor(a / step) * step;
+    for (; v <= Math.ceil(b / step) * step + 1e-9; v += step) t.push(v);
+    return t;
+  }
+  function timeLabel(ms, withTime) {
+    var o = { day: "numeric", month: "short", timeZone: "Australia/Melbourne" };
+    if (withTime) { o.hour = "2-digit"; o.minute = "2-digit"; o.hour12 = false; }
+    return new Date(ms).toLocaleString("en-AU", o);
+  }
+  /* series: [{name, color, shape: "circle"|"diamond", line: bool, points: [{t: ms, p: price}]}] */
+  function lineChart(host, series, opts) {
+    host.textContent = "";
+    var all = [];
+    series.forEach(function (s) { s.points.forEach(function (p) { all.push(p); }); });
+    if (!all.length) { host.appendChild(el("div", { "class": "small" }, opts.empty)); return; }
+    var two = series.filter(function (s) { return s.points.length; }).length > 1;
+    var W = Math.max(300, host.clientWidth || 600), H = 230;
+    var m = { l: 62, r: two ? 84 : 20, t: 14, b: 30 };
+    var ts = all.map(function (p) { return p.t; }), ps = all.map(function (p) { return p.p; });
+    var t0 = Math.min.apply(null, ts), t1 = Math.max.apply(null, ts);
+    var padMs = opts.dateOnly ? 2 * 86400e3 : 12 * 3600e3;
+    if (t1 - t0 < (opts.dateOnly ? 2 * 86400e3 : 6 * 3600e3)) { t0 -= padMs; t1 += padMs; }
+    var ticks = niceTicks(Math.min.apply(null, ps), Math.max.apply(null, ps), 4);
+    var y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    function X(t) { return m.l + (t - t0) / (t1 - t0) * (W - m.l - m.r); }
+    function Y(v) { return m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b); }
+    var svg = sv("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "img", tabindex: "0",
+      "aria-label": opts.label });
+    var ax = sv("g", { "class": "ax" });
+    ticks.forEach(function (v) {
+      ax.appendChild(sv("line", { "class": v === y0 ? "base" : "gl", x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v) }));
+      ax.appendChild(sv("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, money(v)));
+    });
+    var span = t1 - t0, withTime = !opts.dateOnly && span < 3 * 86400e3, nx = Math.min(4, Math.max(2, Math.floor((W - m.l - m.r) / 120)));
+    for (var i = 0; i <= nx; i++) {
+      var t = t0 + span * i / nx;
+      ax.appendChild(sv("text", { x: X(t), y: H - 8, "text-anchor": i === 0 ? "start" : i === nx ? "end" : "middle" }, timeLabel(t, withTime)));
+    }
+    svg.appendChild(ax);
+    var labels = [];
+    series.forEach(function (s) {
+      if (!s.points.length) return;
+      var pts = s.points.slice().sort(function (a, b) { return a.t - b.t; });
+      if (s.line && pts.length > 1) {
+        svg.appendChild(sv("path", { d: pts.map(function (p, j) { return (j ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.p).toFixed(1); }).join(" "),
+          fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      }
+      pts.forEach(function (p) {
+        var x = X(p.t), y = Y(p.p);
+        if (s.shape === "diamond") {
+          svg.appendChild(sv("path", { d: "M" + x + " " + (y - 6) + "L" + (x + 6) + " " + y + "L" + x + " " + (y + 6) + "L" + (x - 6) + " " + y + "Z",
+            fill: s.color, stroke: "var(--surface)", "stroke-width": 2 }));
+        } else {
+          svg.appendChild(sv("circle", { cx: x, cy: y, r: 4, fill: s.color, stroke: "var(--surface)", "stroke-width": 2 }));
+        }
+      });
+      var last = pts[pts.length - 1];
+      if (two) labels.push({ x: X(last.t) + 10, y: Y(last.p) + 4, text: s.short });
+    });
+    if (labels.length === 2 && Math.abs(labels[0].y - labels[1].y) < 13) {  // keep direct labels apart
+      var up = labels[0].y < labels[1].y ? labels[0] : labels[1], dn = up === labels[0] ? labels[1] : labels[0];
+      up.y -= (13 - (dn.y - up.y)) / 2; dn.y = up.y + 13;
+    }
+    labels.forEach(function (l) { svg.appendChild(sv("text", { "class": "dl", x: l.x, y: l.y }, l.text)); });
+
+    var cross = sv("line", { "class": "cross", y1: m.t, y2: H - m.b, visibility: "hidden" });
+    svg.appendChild(cross);
+    var uniq = Array.from(new Set(ts)).sort(function (a, b) { return a - b; });
+    var idx = -1;
+    function readout(t) {
+      var lines = [];
+      series.forEach(function (s) {
+        s.points.forEach(function (p) { if (p.t === t) lines.push({ text: money(p.p) + "  " + s.name, key: s.color, cls: "v" }); });
+      });
+      lines.push({ text: timeLabel(t, !opts.dateOnly), cls: "m" });
+      return lines;
+    }
+    function show(i, cx, cy) {
+      idx = i; var t = uniq[i], x = X(t);
+      cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("visibility", "visible");
+      var r = svg.getBoundingClientRect(), sc = r.width / W;
+      showTip(readout(t), cx != null ? cx : r.left + x * sc, cy != null ? cy : r.top + m.t * sc);
+    }
+    svg.addEventListener("pointermove", function (e) {
+      var r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, best = 0;
+      uniq.forEach(function (t, j) { if (Math.abs(X(t) - x) < Math.abs(X(uniq[best]) - x)) best = j; });
+      show(best, e.clientX, e.clientY);
+    });
+    svg.addEventListener("pointerleave", function () { cross.setAttribute("visibility", "hidden"); hideTip(); });
+    svg.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        show(Math.max(0, Math.min(uniq.length - 1, idx + (e.key === "ArrowRight" ? 1 : -1) + (idx < 0 && e.key === "ArrowLeft" ? 1 : 0))));
+      }
+    });
+    svg.addEventListener("focus", function () { show(uniq.length - 1); });
+    svg.addEventListener("blur", function () { cross.setAttribute("visibility", "hidden"); hideTip(); });
+    host.appendChild(svg);
+    if (two) {
+      var lgd = el("div", { "class": "serieslegend" });
+      series.forEach(function (s) {
+        if (!s.points.length) return;
+        var k = el("span", { "class": "key" });
+        var sw = sv("svg", { width: 18, height: 12, "aria-hidden": "true" });
+        if (s.shape === "diamond") sw.appendChild(sv("path", { d: "M9 1L14 6L9 11L4 6Z", fill: s.color }));
+        else { sw.appendChild(sv("line", { x1: 1, x2: 17, y1: 6, y2: 6, stroke: s.color, "stroke-width": 2 })); sw.appendChild(sv("circle", { cx: 9, cy: 6, r: 3, fill: s.color })); }
+        k.appendChild(sw); k.appendChild(document.createTextNode(s.name)); lgd.appendChild(k);
+      });
+      host.appendChild(lgd);
+    }
+  }
+
+  /* ---------- detail panel ---------- */
+  function stat(label, value, cls) {
+    var s = el("div", { "class": "stat" });
+    s.appendChild(el("div", { "class": "label" }, label));
+    s.appendChild(el("div", { "class": "value" + (cls ? " " + cls : "") }, value));
+    return s;
+  }
+  function legRows(tb, name, leg) {
+    var h = el("tr", { "class": "leghead" }); h.appendChild(el("td", { colspan: "4" }, name + " · " + leg.total)); tb.appendChild(h);
+    leg.segments.forEach(function (s, i) {
+      var tr = el("tr");
+      [s.flight_number, s.route, s.dep + " → " + s.arr, s.duration + (s.airplane ? " · " + s.airplane : "")].forEach(function (v) { tr.appendChild(el("td", null, v)); });
+      tb.appendChild(tr);
+      if (i < leg.segments.length - 1 && leg.layovers[i]) {
+        var l = el("tr", { "class": "lay" }); l.appendChild(el("td", { colspan: "4" }, "Layover: " + leg.layovers[i])); tb.appendChild(l);
+      }
+    });
+  }
+  var detailChartArgs = null;
+  function renderDetail(p) {
+    var box = document.getElementById("detail");
+    box.textContent = "";
+    if (!p) { box.appendChild(el("h2", null, "No date pairs checked yet")); return; }
+    box.appendChild(el("h2", null, pairLabel(p)));
+    box.appendChild(el("div", { "class": "small" }, (p.inGrid ? "Checked daily by FlightWatch" : "From a manual search (not in the daily grid)") +
+      " · last checked " + p.checkedAgo + " · " + p.checks + (p.checks === 1 ? " check" : " checks")));
+    if (!p.onSale) {
+      box.appendChild(el("div", { "class": "callout" }, "Not on sale yet, or no Cathay flights in " + M.cabin + " all the way for these dates."));
+      return;
+    }
+    var stats = el("div", { "class": "stats" });
+    stats.appendChild(stat("Return-trip price", money(p.price)));
+    if (p.prev != null) {
+      var d = p.price - p.prev;
+      stats.appendChild(stat("Since previous check", d === 0 ? "same" : (d > 0 ? "▲ " : "▼ ") + money(Math.abs(d)), d > 0 ? "up" : d < 0 ? "down" : ""));
+    } else {
+      stats.appendChild(stat("Since previous check", "first check"));
+    }
+    stats.appendChild(stat("Lowest seen", money(p.low)));
+    box.appendChild(stats);
+    if (p.jump) box.appendChild(el("div", { "class": "callout jump" }, "▲ Up " + money(p.jump[0]) + " (" + p.jump[1] + "%) since the previous check. A jump like this usually means the cheaper seats sold out."));
+    var chart = el("div", { "class": "chart" });
+    box.appendChild(el("h2", { style: "margin-top:14px" }, "Price history"));
+    box.appendChild(chart);
+    detailChartArgs = [chart, [
+      { name: "Return-trip price", short: "price", color: "var(--series-1)", line: true, shape: "circle",
+        points: p.history.map(function (h) { return { t: Date.parse(h.t), p: h.p }; }) }
+    ], { label: "Price history for " + pairLabel(p), empty: "No prices yet." }];
+    lineChart.apply(null, detailChartArgs);
+    if (p.flights) {
+      box.appendChild(el("h2", { style: "margin-top:14px" }, "Outbound flights"));
+      var t = el("table", { "class": "legs" }), tb = el("tbody");
+      legRows(tb, "Outbound", p.flights);
+      t.appendChild(tb); box.appendChild(t);
+      box.appendChild(el("div", { "class": "small", style: "margin-top:6px" }, "The flight home is included in the price: Google pairs this outbound flight with its cheapest flight back."));
+    }
+    if (p.gf) {
+      var a = el("a", { href: p.gf, target: "_blank", rel: "noopener" }, "View these dates on Google Flights");
+      var pa = el("p"); pa.appendChild(a); box.appendChild(pa);
+    }
+  }
+  function select(p) {
+    if (selected && cells[key(selected)]) cells[key(selected)].setAttribute("aria-pressed", "false");
+    selected = p;
+    if (cells[key(p)]) cells[key(p)].setAttribute("aria-pressed", "true");
+    renderDetail(p);
+    renderTable();
+  }
+
+  /* ---------- table ---------- */
+  var cols = [
+    { h: "Leave", v: function (p) { return p.out; }, show: function (p) { return p.outLabel; } },
+    { h: "Back", v: function (p) { return p.ret; }, show: function (p) { return p.retLabel; } },
+    { h: "Nights", num: true, v: function (p) { return p.nights; }, show: function (p) { return String(p.nights); } },
+    { h: "Return trip", num: true, v: function (p) { return p.price == null ? Infinity : p.price; },
+      show: function (p) { return p.onSale ? money(p.price) : "not on sale"; } },
+    { h: "Change", num: true, v: function (p) { return p.prev == null ? 0 : p.price - p.prev; },
+      show: function (p) { if (p.prev == null) return "–"; var d = p.price - p.prev; return d === 0 ? "same" : (d > 0 ? "▲ " : "▼ ") + money(Math.abs(d)); } },
+    { h: "Lowest seen", num: true, v: function (p) { return p.low == null ? Infinity : p.low; }, show: function (p) { return money(p.low); } },
+    { h: "Checks", num: true, v: function (p) { return p.checks; }, show: function (p) { return String(p.checks); } },
+    { h: "Last checked", v: function (p) { return -Date.parse(p.checked); }, show: function (p) { return p.checkedAgo; } },
+    { h: "Daily grid", v: function (p) { return p.inGrid ? 0 : 1; }, show: function (p) { return p.inGrid ? "yes" : "manual"; } }
+  ];
+  var sortCol = 3, sortDir = 1;
+  function renderTable() {
+    var t = document.getElementById("table");
+    t.textContent = "";
+    var thead = el("thead"), hr = el("tr");
+    cols.forEach(function (c, i) {
+      var th = el("th", { "class": c.num ? "num" : null, "aria-sort": i === sortCol ? (sortDir > 0 ? "ascending" : "descending") : "none" });
+      var b = el("button", { type: "button" }, c.h + (i === sortCol ? (sortDir > 0 ? " ▲" : " ▼") : ""));
+      b.addEventListener("click", function () { sortDir = sortCol === i ? -sortDir : 1; sortCol = i; renderTable(); });
+      th.appendChild(b); hr.appendChild(th);
+    });
+    thead.appendChild(hr); t.appendChild(thead);
+    var tb = el("tbody");
+    checked.slice().sort(function (a, b) {
+      var x = cols[sortCol].v(a), y = cols[sortCol].v(b);
+      return (x < y ? -1 : x > y ? 1 : 0) * sortDir || (a.out < b.out ? -1 : 1);
+    }).forEach(function (p) {
+      var tr = el("tr", { "class": selected === p ? "sel" : null, tabindex: "0" });
+      cols.forEach(function (c) {
+        var td = el("td", { "class": c.num ? "num" : null }, c.show(p));
+        if (c.h === "Change" && p.prev != null && p.price !== p.prev) td.className += p.price > p.prev ? " up" : " down";
+        tr.appendChild(td);
+      });
+      tr.addEventListener("click", function () { select(p); document.getElementById("detail").scrollIntoView({ behavior: "smooth", block: "start" }); });
+      tr.addEventListener("keydown", function (e) { if (e.key === "Enter") tr.click(); });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+  }
+
+  /* ---------- daily trend ---------- */
+  var dailyArgs = [document.getElementById("daily"), [
+    { name: "Lowest price found", color: "var(--series-1)", line: true, shape: "circle",
+      points: D.daily.map(function (d) { return { t: Date.parse(d.d + "T12:00:00+10:00"), p: d.p }; }) }
+  ], { label: "Lowest price found each day", empty: "This fills in as prices are checked.", dateOnly: true }];
+
+  if (M.outsideCount) document.getElementById("table-note").textContent +=
+    " " + M.outsideCount + (M.outsideCount === 1 ? " earlier search" : " earlier searches") + " for dates outside this range aren't shown.";
+  buildMap();
+  if (selected) select(selected); else renderDetail(null);
+  renderTable();
+  lineChart.apply(null, dailyArgs);
+  if (D.daily.length < 2) document.getElementById("daily").appendChild(el("div", { "class": "small" }, "The trend line appears once prices have been checked on two different days."));
+  var rt;
+  window.addEventListener("resize", function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { if (detailChartArgs) lineChart.apply(null, detailChartArgs); lineChart.apply(null, dailyArgs);
+      if (D.daily.length < 2) document.getElementById("daily").appendChild(el("div", { "class": "small" }, "The trend line appears once prices have been checked on two different days.")); }, 150);
+  });
+})();
+</script>
+
+</body>
+</html>
